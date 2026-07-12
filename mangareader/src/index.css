@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: #0a0a0f;
+    color: #d0d0e0;
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #111118;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #3e3e50;
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #e0192f;
+  }
+}
+
+@layer components {
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      #1a1a24 0%,
+      #24242f 40%,
+      #1a1a24 80%
+    );
+    background-size: 400px 100%;
+    animation: shimmer 1.6s infinite linear;
+  }
+
+  .card-hover {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .card-hover:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(224, 25, 47, 0.2);
+  }
+
+  .crimson-glow {
+    box-shadow: 0 0 20px rgba(224, 25, 47, 0.3);
+  }
+
+  .text-gradient {
+    background: linear-gradient(135deg, #ff2d44, #c0152a);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
