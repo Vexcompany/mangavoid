@@ -1,24 +1,25 @@
 import axios from 'axios';
 
-const BASE = import.meta.env.DEV ? '' : '';
-
 export async function searchManga(query, limit = 12) {
-  const res = await axios.get(`${BASE}/api/search`, {
+  const res = await axios.get('/api/search', {
     params: { q: query, limit },
   });
   return res.data.results || [];
 }
 
 export async function getMangaDetail(hid) {
-  const res = await axios.get(`${BASE}/api/detail`, {
+  const res = await axios.get('/api/detail', {
     params: { hid },
   });
   return res.data;
 }
 
 export function extractHid(url) {
-  const match = url.match(/\/title\/([a-z0-9]+)/i);
-  return match ? match[1] : url.split('/').pop();
+  // MangaDex UUID dari url https://mangadex.org/title/<uuid>
+  const match = url.match(/\/title\/([a-f0-9-]{36})/i);
+  if (match) return match[1];
+  // Fallback: ambil segment terakhir
+  return url.split('/').pop();
 }
 
 export function formatNumber(n) {
