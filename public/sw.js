@@ -1,15 +1,26 @@
-const CACHE = 'mangavoid-v1';
-const STATIC = ['/', '/index.html'];
+const CACHE_VERSION = 'mangavoid-v2';
+const STATIC_CACHE = `${CACHE_VERSION}-static`;
+const MEDIA_CACHE = `${CACHE_VERSION}-media`;
+
+const STATIC_ASSETS = ['/'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(STATIC)));
+  e.waitUntil(
+    caches.open(STATIC_CACHE).then(c => c.addAll(STATIC_ASSETS))
+  );
   self.skipWaiting();
 });
 
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(keys =>
-    Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-  ));
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(
+        keys
+          .filter(k => !k.startsWith(CACHE_VERSION))
+          .map(k => caches.delete(k))
+      )
+    )
+  );
   self.clients.claim();
 });
 
@@ -20,7 +31,7 @@ self.addEventListener('fetch', e => {
 
   if (url.pathname.startsWith('/api/cover') || url.pathname.startsWith('/api/page?')) {
     e.respondWith(
-      caches.open(CACHE).then(async cache => {
+      caches.open(MEDIA_CACHE).then(async cache => {
         const cached = await cache.match(e.request);
         if (cached) return cached;
         const res = await fetch(e.request);
@@ -33,21 +44,28 @@ self.addEventListener('fetch', e => {
 
   if (url.pathname.startsWith('/api/')) {
     e.respondWith(
-      fetch(e.request).catch(() => caches.match(e.request))
+      fetch(e.request)
+        .then(res => {
+          if (res.ok) {
+            const clone = res.clone();
+            caches.open(STATIC_CACHE).then(c => c.put(e.request, clone));
+          }
+          return res;
+        })
+        .catch(() => caches.match(e.request))
     );
     return;
   }
 
   e.respondWith(
-    caches.match(e.request).then(cached => {
-      if (cached) return cached;
-      return fetch(e.request).then(res => {
+    fetch(e.request)
+      .then(res => {
         if (res.ok && res.type !== 'opaque') {
-          const toCache = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, toCache));
+          const clone = res.clone();
+          caches.open(STATIC_CACHE).then(c => c.put(e.request, clone));
         }
         return res;
-      });
-    })
+      })
+      .catch(() => caches.match(e.request))
   );
 });
