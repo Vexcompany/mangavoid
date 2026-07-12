@@ -23,24 +23,16 @@ function mapManga(manga) {
     ? `/api/cover?url=https://uploads.mangadex.org/covers/${manga.id}/${coverId}.256.jpg`
     : '';
   const title =
-    attrs.title.en ||
-    attrs.title.ja ||
-    attrs.title['ja-ro'] ||
-    Object.values(attrs.title)[0] ||
-    'Unknown';
+    attrs.title.en || attrs.title.ja || attrs.title['ja-ro'] ||
+    Object.values(attrs.title)[0] || 'Unknown';
   const statusMap = { ongoing: 1, completed: 2, hiatus: 3, cancelled: 4 };
   const typeMap = { ja: 1, ko: 2, zh: 3 };
   return {
-    id: manga.id,
-    hid: manga.id,
-    title,
-    slug: manga.id,
+    id: manga.id, hid: manga.id, title, slug: manga.id,
     type: typeMap[attrs.originalLanguage] || 1,
     status: statusMap[attrs.status] || 0,
-    poster,
-    url: `https://mangadex.org/title/${manga.id}`,
-    year: attrs.year,
-    latestChapter: attrs.lastChapter,
+    poster, url: `https://mangadex.org/title/${manga.id}`,
+    year: attrs.year, latestChapter: attrs.lastChapter,
   };
 }
 
@@ -52,21 +44,15 @@ module.exports = async (req, res) => {
   try {
     const params = new URLSearchParams();
     params.append('limit', '100');
-    params.append('offset', String(Math.floor(Math.random() * 100)));
+    params.append('offset', String(Math.floor(Math.random() * 200)));
     params.append('order[followedCount]', 'desc');
     params.append('includes[]', 'cover_art');
     params.append('contentRating[]', 'safe');
     params.append('contentRating[]', 'suggestive');
     params.append('hasAvailableChapters', 'true');
 
-    const { status, body } = await httpsGet(
-      `https://api.mangadex.org/manga?${params.toString()}`
-    );
-
-    if (status !== 200 || !body.data) {
-      return res.status(200).json({ results: [] });
-    }
-
+    const { status, body } = await httpsGet(`https://api.mangadex.org/manga?${params.toString()}`);
+    if (status !== 200 || !body.data) return res.status(200).json({ results: [] });
     return res.status(200).json({ results: body.data.map(mapManga) });
   } catch (error) {
     console.error('Discover error:', error.message);
