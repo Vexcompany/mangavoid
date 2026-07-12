@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
+import { toast } from '../components/Toast';
 
-const POLL_INTERVAL = 3 * 60 * 1000; // 3 menit
+const POLL_INTERVAL = 3 * 60 * 1000;
 const STORAGE_KEY = 'mv_last_seen_update';
 
 function getLastSeen() {
@@ -20,15 +21,10 @@ export function useUpdates() {
 
   const fetchUpdates = useCallback(async (isSilent = false) => {
     try {
-      const lastSeen = getLastSeen();
-      const params = { limit: 20 };
-      if (lastSeen && !isFirstFetch.current) params.since = lastSeen;
-
-      const res = await axios.get('/api/latest', { params });
+      const res = await axios.get('/api/latest', { params: { limit: 20 } });
       const { results, serverTime } = res.data;
 
       if (isFirstFetch.current) {
-        // First load: just set data, mark all as read
         setUpdates(results);
         setLastSeen(serverTime);
         isFirstFetch.current = false;
@@ -42,6 +38,15 @@ export function useUpdates() {
           const fresh = results.filter(m => !existingIds.has(m.id));
           if (fresh.length > 0) {
             setUnreadCount(c => c + fresh.length);
+            if (!isSilent) {
+              toast(
+                fresh.length === 1
+                  ? `"${fresh[0].title}" just updated!`
+                  : `${fresh.length} manga just updated!`,
+                'update',
+                5000
+              );
+            }
             return [...fresh, ...prev].slice(0, 50);
           }
           return prev;
@@ -61,9 +66,7 @@ export function useUpdates() {
     return () => clearInterval(timerRef.current);
   }, [fetchUpdates]);
 
-  function markAllRead() {
-    setUnreadCount(0);
-  }
+  function markAllRead() { setUnreadCount(0); }
 
   return { updates, unreadCount, lastChecked, markAllRead, refresh: () => fetchUpdates(false) };
 }
