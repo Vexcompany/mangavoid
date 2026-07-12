@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import SearchBox from '../components/SearchBox';
 import MangaCard from '../components/MangaCard';
 import { CardSkeleton } from '../components/Skeleton';
+import SearchBox from '../components/SearchBox';
 import { getHistory, getBookmarks } from '../lib/storage';
 
 const QUICK_SEARCHES = ['One Piece', 'Jujutsu Kaisen', 'Chainsaw Man', 'Solo Leveling', 'Berserk', 'Vinland Saga'];
@@ -26,27 +26,54 @@ const STATUS_OPTIONS = [
   { value: 'hiatus', label: 'Hiatus' },
 ];
 
+function timeAgo(dateStr) {
+  if (!dateStr) return '';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
 export default function Home() {
-  const [input, setInput] = useState('');
   const [discover, setDiscover] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [latest, setLatest] = useState([]);
+  const [loadingDiscover, setLoadingDiscover] = useState(true);
+  const [loadingLatest, setLoadingLatest] = useState(true);
   const [tags, setTags] = useState([]);
   const [sort, setSort] = useState('followedCount');
   const [genre, setGenre] = useState('');
   const [status, setStatus] = useState('');
   const [type, setType] = useState('');
-  const [tab, setTab] = useState('discover');
+  const [tab, setTab] = useState('latest');
   const [history, setHistory] = useState([]);
   const [bookmarks, setBookmarks] = useState([]);
+  const [latestTimer, setLatestTimer] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     axios.get('/api/tags').then(res => setTags(res.data.tags || [])).catch(() => {});
   }, []);
 
+  const fetchLatest = useCallback(() => {
+    setLoadingLatest(true);
+    axios.get('/api/latest', { params: { limit: 48 } })
+      .then(res => setLatest(res.data.results || []))
+      .catch(() => setLatest([]))
+      .finally(() => setLoadingLatest(false));
+  }, []);
+
+  useEffect(() => {
+    fetchLatest();
+    const timer = setInterval(fetchLatest, 3 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, [fetchLatest]);
+
   useEffect(() => {
     if (tab !== 'discover') return;
-    setLoading(true);
+    setLoadingDiscover(true);
     const params = { sort };
     if (genre) params.genre = genre;
     if (status) params.status = status;
@@ -54,18 +81,13 @@ export default function Home() {
     axios.get('/api/discover', { params })
       .then(res => setDiscover(res.data.results || []))
       .catch(() => setDiscover([]))
-      .finally(() => setLoading(false));
+      .finally(() => setLoadingDiscover(false));
   }, [sort, genre, status, type, tab]);
 
   useEffect(() => {
     if (tab === 'history') setHistory(getHistory());
     if (tab === 'bookmarks') setBookmarks(getBookmarks());
   }, [tab]);
-
-  function handleSubmit(e) {
-    e.preventDefault();
-    if (input.trim()) navigate(`/search?q=${encodeURIComponent(input.trim())}`);
-  }
 
   return (
     <main className="min-h-screen">
@@ -75,14 +97,14 @@ export default function Home() {
         <div className="relative z-10 max-w-2xl w-full">
           <div className="inline-flex items-center gap-2 bg-crimson-600/10 border border-crimson-600/20 rounded-full px-4 py-1 mb-5">
             <div className="w-1.5 h-1.5 rounded-full bg-crimson-400 animate-pulse" />
-            <span className="text-xs font-mono text-crimson-300 tracking-widest uppercase">Manga Database</span>
+            <span className="text-xs font-mono text-crimson-300 tracking-widest uppercase">Live Manga Database</span>
           </div>
           <h1 className="font-display text-6xl md:text-8xl tracking-wider leading-none mb-4">
             <span className="text-ash-100">READ THE</span><br />
             <span className="text-gradient">VOID.</span>
           </h1>
           <p className="text-ash-400 text-base max-w-md mx-auto mb-8 leading-relaxed">
-            Explore millions of manga, manhwa, and manhua titles.
+            Explore millions of manga, manhwa, and manhua. Updated in real-time.
           </p>
           <SearchBox
             className="max-w-lg mx-auto"
@@ -103,14 +125,15 @@ export default function Home() {
 
       <section className="max-w-6xl mx-auto px-4 pb-16">
         <div className="border-t border-ink-700 pt-6 mb-6">
-          <div className="flex items-center gap-1 mb-6">
+          <div className="flex items-center gap-1 mb-6 overflow-x-auto pb-1">
             {[
+              { key: 'latest', label: '🔴 Live Updates' },
               { key: 'discover', label: 'Discover' },
               { key: 'bookmarks', label: 'Bookmarks' },
               { key: 'history', label: 'History' },
             ].map(t => (
               <button key={t.key} onClick={() => setTab(t.key)}
-                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all ${tab === t.key ? 'bg-crimson-600 text-white' : 'text-ash-400 hover:text-ash-200 hover:bg-ink-800'}`}>
+                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all whitespace-nowrap ${tab === t.key ? 'bg-crimson-600 text-white' : 'text-ash-400 hover:text-ash-200 hover:bg-ink-800'}`}>
                 {t.label}
               </button>
             ))}
@@ -145,11 +168,46 @@ export default function Home() {
               )}
             </div>
           )}
+
+          {tab === 'latest' && (
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                <span className="text-xs font-mono text-ash-500">AUTO-REFRESH EVERY 3 MIN</span>
+              </div>
+              <button onClick={fetchLatest}
+                className="text-xs text-ash-400 hover:text-ash-200 border border-ink-600 hover:border-crimson-600/40 rounded-lg px-3 py-1.5 transition-all flex items-center gap-1.5">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Refresh now
+              </button>
+            </div>
+          )}
         </div>
+
+        {tab === 'latest' && (
+          loadingLatest
+            ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {Array.from({ length: 24 }).map((_, i) => <CardSkeleton key={i} />)}
+              </div>
+            : <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {latest.map((manga, i) => (
+                  <div key={manga.id} className="relative">
+                    <MangaCard manga={manga} />
+                    {i < 3 && (
+                      <div className="absolute top-2 right-2 bg-crimson-600 text-white text-xs font-mono px-1.5 py-0.5 rounded font-bold z-10">
+                        NEW
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+        )}
 
         {tab === 'discover' && (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {loading
+            {loadingDiscover
               ? Array.from({ length: 24 }).map((_, i) => <CardSkeleton key={i} />)
               : discover.map(manga => <MangaCard key={manga.id} manga={manga} />)
             }
@@ -158,7 +216,7 @@ export default function Home() {
 
         {tab === 'bookmarks' && (
           bookmarks.length === 0
-            ? <div className="text-center py-20 text-ash-500 text-sm">No bookmarks yet. Tap the bookmark icon on any manga.</div>
+            ? <div className="text-center py-20 text-ash-500 text-sm">No bookmarks yet.</div>
             : <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                 {bookmarks.map(manga => <MangaCard key={manga.id} manga={manga} />)}
               </div>
@@ -175,4 +233,3 @@ export default function Home() {
     </main>
   );
 }
-
