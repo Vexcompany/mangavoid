@@ -1,19 +1,31 @@
-const axios = require('axios');
+const https = require('https');
 
 const HEADERS = {
   'authority': 'mangafire.to',
   'accept': 'application/json, text/javascript, */*; q=0.01',
-  'accept-language': 'en-US,en;q=0.9,id;q=0.8',
+  'accept-language': 'en-US,en;q=0.9',
   'referer': 'https://mangafire.to/',
-  'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-  'sec-ch-ua-mobile': '?0',
-  'sec-ch-ua-platform': '"Windows"',
   'sec-fetch-dest': 'empty',
   'sec-fetch-mode': 'cors',
   'sec-fetch-site': 'same-origin',
   'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   'x-requested-with': 'XMLHttpRequest'
 };
+
+function httpsGet(url, headers) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, { headers }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try { resolve(JSON.parse(data)); }
+        catch (e) { reject(new Error('Invalid JSON')); }
+      });
+    });
+    req.on('error', reject);
+    req.setTimeout(10000, () => { req.destroy(); reject(new Error('Timeout')); });
+  });
+}
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -24,12 +36,10 @@ module.exports = async (req, res) => {
   if (!hid) return res.status(400).json({ error: 'HID required' });
 
   try {
-    const response = await axios.get(`https://mangafire.to/api/titles/${hid}`, {
-      headers: HEADERS,
-    });
+    const data = await httpsGet(`https://mangafire.to/api/titles/${hid}`, HEADERS);
 
-    if (response.data && response.data.data) {
-      const d = response.data.data;
+    if (data && data.data) {
+      const d = data.data;
       return res.status(200).json({
         id: d.id,
         hid: d.hid,
@@ -60,6 +70,6 @@ module.exports = async (req, res) => {
     return res.status(404).json({ error: 'Not found' });
   } catch (error) {
     console.error('Detail error:', error.message);
-    return res.status(500).json({ error: 'Failed to fetch detail' });
+    return res.status(500).json({ error: error.message });
   }
 };
