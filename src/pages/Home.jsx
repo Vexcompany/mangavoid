@@ -13,7 +13,7 @@ export default function Home() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    searchManga('popular manga', 12)
+    searchManga('action adventure', 12)
       .then(data => setTrending(data))
       .catch(() => setTrending([]))
       .finally(() => setLoadingTrending(false));
