@@ -72,3 +72,8 @@
     background-clip: text;
   }
 }
+
+  .grid-bg {
+    background-image: radial-gradient(circle, #ffffff18 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
