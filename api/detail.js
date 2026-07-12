@@ -1,29 +1,17 @@
 const https = require('https');
 
-const HEADERS = {
-  'authority': 'mangafire.to',
-  'accept': 'application/json, text/javascript, */*; q=0.01',
-  'accept-language': 'en-US,en;q=0.9',
-  'referer': 'https://mangafire.to/',
-  'sec-fetch-dest': 'empty',
-  'sec-fetch-mode': 'cors',
-  'sec-fetch-site': 'same-origin',
-  'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-  'x-requested-with': 'XMLHttpRequest'
-};
-
-function httpsGet(url, headers) {
+function httpsGet(url) {
   return new Promise((resolve, reject) => {
-    const req = https.get(url, { headers }, (res) => {
+    const req = https.get(url, { headers: { 'User-Agent': 'MangaVoid/1.0' } }, (res) => {
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
-        try { resolve(JSON.parse(data)); }
-        catch (e) { reject(new Error('Invalid JSON')); }
+        try { resolve({ status: res.statusCode, body: JSON.parse(data) }); }
+        catch (e) { resolve({ status: res.statusCode, body: data }); }
       });
     });
     req.on('error', reject);
-    req.setTimeout(10000, () => { req.destroy(); reject(new Error('Timeout')); });
+    req.setTimeout(15000, () => { req.destroy(); reject(new Error('Timeout')); });
   });
 }
 
@@ -36,38 +24,88 @@ module.exports = async (req, res) => {
   if (!hid) return res.status(400).json({ error: 'HID required' });
 
   try {
-    const data = await httpsGet(`https://mangafire.to/api/titles/${hid}`, HEADERS);
+    const params = new URLSearchParams();
+    params.append('includes[]', 'cover_art');
+    params.append('includes[]', 'author');
+    params.append('includes[]', 'artist');
 
-    if (data && data.data) {
-      const d = data.data;
-      return res.status(200).json({
-        id: d.id,
-        hid: d.hid,
-        title: d.title,
-        slug: d.slug,
-        type: d.type,
-        status: d.status,
-        contentRating: d.contentRating,
-        poster: d.poster?.large || d.poster?.url || '',
-        url: 'https://mangafire.to' + d.url,
-        year: d.year,
-        latestChapter: d.latestChapter,
-        chapterUpdatedAt: d.chapterUpdatedAt,
-        synopsis: d.synopsisHtml ? d.synopsisHtml.replace(/<[^>]*>?/gm, '').trim() : '',
-        altTitles: d.altTitles || [],
-        rating: d.rating,
-        ratingCount: d.ratingCount,
-        follows: d.follows,
-        languages: d.languages || [],
-        genres: d.genres ? d.genres.map(g => g.title) : [],
-        themes: d.themes ? d.themes.map(t => t.title) : [],
-        demographics: d.demographics ? d.demographics.map(dm => dm.title) : [],
-        authors: d.authors ? d.authors.map(a => a.title) : [],
-        artists: d.artists ? d.artists.map(ar => ar.title) : [],
-      });
+    const { status, body } = await httpsGet(
+      `https://api.mangadex.org/manga/${hid}?${params.toString()}`
+    );
+
+    if (status !== 200 || !body.data) {
+      return res.status(404).json({ error: 'Not found' });
     }
 
-    return res.status(404).json({ error: 'Not found' });
+    const d = body.data;
+    const attrs = d.attributes;
+
+    const coverRel = d.relationships.find(r => r.type === 'cover_art');
+    const coverId = coverRel?.attributes?.fileName;
+    const poster = coverId
+      ? `https://uploads.mangadex.org/covers/${d.id}/${coverId}.512.jpg`
+      : '';
+
+    const title =
+      attrs.title.en ||
+      attrs.title.ja ||
+      attrs.title['ja-ro'] ||
+      Object.values(attrs.title)[0] ||
+      'Unknown';
+
+    const altTitles = attrs.altTitles
+      ? attrs.altTitles.flatMap(t => Object.values(t)).filter(Boolean).slice(0, 5)
+      : [];
+
+    const synopsis =
+      attrs.description?.en ||
+      attrs.description?.ja ||
+      Object.values(attrs.description || {})[0] ||
+      '';
+
+    const genres = (attrs.tags || [])
+      .filter(t => t.attributes.group === 'genre')
+      .map(t => t.attributes.name.en || Object.values(t.attributes.name)[0]);
+
+    const themes = (attrs.tags || [])
+      .filter(t => t.attributes.group === 'theme')
+      .map(t => t.attributes.name.en || Object.values(t.attributes.name)[0]);
+
+    const authors = d.relationships
+      .filter(r => r.type === 'author')
+      .map(r => r.attributes?.name).filter(Boolean);
+
+    const artists = d.relationships
+      .filter(r => r.type === 'artist')
+      .map(r => r.attributes?.name).filter(Boolean);
+
+    const statusMap = { ongoing: 1, completed: 2, hiatus: 3, cancelled: 4 };
+    const typeMap = { ja: 1, ko: 2, zh: 3 };
+
+    return res.status(200).json({
+      id: d.id,
+      hid: d.id,
+      title,
+      slug: d.id,
+      type: typeMap[attrs.originalLanguage] || 1,
+      status: statusMap[attrs.status] || 0,
+      contentRating: attrs.contentRating,
+      poster,
+      url: `https://mangadex.org/title/${d.id}`,
+      year: attrs.year,
+      latestChapter: attrs.lastChapter,
+      synopsis,
+      altTitles,
+      rating: null,
+      ratingCount: null,
+      follows: null,
+      languages: attrs.availableTranslatedLanguages || [],
+      genres,
+      themes,
+      demographics: attrs.publicationDemographic ? [attrs.publicationDemographic] : [],
+      authors,
+      artists,
+    });
   } catch (error) {
     console.error('Detail error:', error.message);
     return res.status(500).json({ error: error.message });
