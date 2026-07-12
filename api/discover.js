@@ -51,7 +51,7 @@ module.exports = async (req, res) => {
 
   try {
     const params = new URLSearchParams();
-    params.append('limit', '24');
+    params.append('limit', '100');
     params.append('offset', String(Math.floor(Math.random() * 100)));
     params.append('order[followedCount]', 'desc');
     params.append('includes[]', 'cover_art');
