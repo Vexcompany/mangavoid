@@ -7,7 +7,7 @@ function httpsGet(url) {
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
         try { resolve({ status: res.statusCode, body: JSON.parse(data) }); }
-        catch (e) { resolve({ status: res.statusCode, body: data }); }
+        catch { resolve({ status: res.statusCode, body: data }); }
       });
     });
     req.on('error', reject);
@@ -22,9 +22,7 @@ function mapManga(manga) {
   const poster = coverId
     ? `/api/cover?url=https://uploads.mangadex.org/covers/${manga.id}/${coverId}.256.jpg`
     : '';
-  const title =
-    attrs.title.en || attrs.title.ja || attrs.title['ja-ro'] ||
-    Object.values(attrs.title)[0] || 'Unknown';
+  const title = attrs.title.en || attrs.title.ja || attrs.title['ja-ro'] || Object.values(attrs.title)[0] || 'Unknown';
   const statusMap = { ongoing: 1, completed: 2, hiatus: 3, cancelled: 4 };
   const typeMap = { ja: 1, ko: 2, zh: 3 };
   return {
@@ -38,22 +36,38 @@ function mapManga(manga) {
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  const { sort = 'followedCount', genre, status, type, offset = 0 } = req.query;
 
   try {
     const params = new URLSearchParams();
     params.append('limit', '100');
-    params.append('offset', String(Math.floor(Math.random() * 200)));
-    params.append('order[followedCount]', 'desc');
+    params.append('offset', String(parseInt(offset)));
     params.append('includes[]', 'cover_art');
     params.append('contentRating[]', 'safe');
     params.append('contentRating[]', 'suggestive');
     params.append('hasAvailableChapters', 'true');
 
-    const { status, body } = await httpsGet(`https://api.mangadex.org/manga?${params.toString()}`);
-    if (status !== 200 || !body.data) return res.status(200).json({ results: [] });
-    return res.status(200).json({ results: body.data.map(mapManga) });
+    const sortMap = {
+      followedCount: ['followedCount', 'desc'],
+      latestUpload: ['latestUploadedChapter', 'desc'],
+      rating: ['rating', 'desc'],
+      year: ['year', 'desc'],
+    };
+    const [sortKey, sortDir] = sortMap[sort] || sortMap.followedCount;
+    params.append(`order[${sortKey}]`, sortDir);
+
+    if (genre) params.append('includedTags[]', genre);
+    if (status) params.append('status[]', status);
+    if (type) {
+      const pubMap = { manga: 'ja', manhwa: 'ko', manhua: 'zh' };
+      if (pubMap[type]) params.append('originalLanguage[]', pubMap[type]);
+    }
+
+    const { status: httpStatus, body } = await httpsGet(`https://api.mangadex.org/manga?${params.toString()}`);
+    if (httpStatus !== 200 || !body.data) return res.status(200).json({ results: [], total: 0 });
+    return res.status(200).json({ results: body.data.map(mapManga), total: body.total });
   } catch (error) {
     console.error('Discover error:', error.message);
     return res.status(500).json({ error: error.message });
