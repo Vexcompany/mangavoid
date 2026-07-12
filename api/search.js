@@ -44,7 +44,7 @@ module.exports = async (req, res) => {
       const coverRel = manga.relationships.find(r => r.type === 'cover_art');
       const coverId = coverRel?.attributes?.fileName;
       const poster = coverId
-        ? `https://uploads.mangadex.org/covers/${manga.id}/${coverId}.256.jpg`
+        ? `/api/cover?url=https://uploads.mangadex.org/covers/${manga.id}/${coverId}.256.jpg`
         : '';
 
       const title =
