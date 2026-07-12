@@ -4,7 +4,7 @@ import axios from 'axios';
 import MangaCard from '../components/MangaCard';
 import { CardSkeleton } from '../components/Skeleton';
 import SearchBox from '../components/SearchBox';
-import { getHistory, getBookmarks } from '../lib/storage';
+import { getHistory, getBookmarks, getContinueReading } from '../lib/storage';
 
 const QUICK_SEARCHES = ['One Piece', 'Jujutsu Kaisen', 'Chainsaw Man', 'Solo Leveling', 'Berserk', 'Vinland Saga'];
 const SORT_OPTIONS = [
@@ -50,11 +50,13 @@ export default function Home() {
   const [tab, setTab] = useState('latest');
   const [history, setHistory] = useState([]);
   const [bookmarks, setBookmarks] = useState([]);
+  const [continueReading, setContinueReading] = useState([]);
   const [latestTimer, setLatestTimer] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     axios.get('/api/tags').then(res => setTags(res.data.tags || [])).catch(() => {});
+    setContinueReading(getContinueReading());
   }, []);
 
   const fetchLatest = useCallback(() => {
@@ -122,6 +124,43 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {continueReading.length > 0 && (
+        <section className="max-w-6xl mx-auto px-4 pt-8">
+          <div className="mb-4 flex items-center gap-3">
+            <h2 className="font-display text-xl tracking-wider text-ash-100">CONTINUE READING</h2>
+            <span className="text-xs font-mono text-ash-500">{continueReading.length} in progress</span>
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-3">
+            {continueReading.map(manga => (
+              <a key={manga.id} href={`/read/${manga.progress.chapterId}?manga=${manga.hid}&ch=${manga.progress.chapterNum}`}
+                className="shrink-0 w-32 group cursor-pointer">
+                <div className="relative aspect-[2/3] rounded-lg overflow-hidden border border-ink-600 bg-ink-700 group-hover:border-crimson-600/50 transition-all">
+                  {manga.poster
+                    ? <img src={manga.poster} alt={manga.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    : <div className="w-full h-full flex items-center justify-center"><span className="font-display text-3xl text-ink-500">M</span></div>
+                  }
+                  <div className="absolute inset-0 bg-gradient-to-t from-ink-950/90 via-transparent to-transparent" />
+                  <div className="absolute bottom-2 left-2 right-2">
+                    <div className="h-1 bg-ink-700 rounded-full overflow-hidden">
+                      <div className="h-full bg-crimson-500 rounded-full" style={{ width: '40%' }} />
+                    </div>
+                    <span className="text-xs font-mono text-ash-300 mt-1 block">Ch.{manga.progress.chapterNum}</span>
+                  </div>
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="w-10 h-10 bg-crimson-600/90 rounded-full flex items-center justify-center">
+                      <svg className="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-ash-400 mt-1.5 truncate group-hover:text-ash-200 transition-colors">{manga.title}</p>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="max-w-6xl mx-auto px-4 pb-16">
         <div className="border-t border-ink-700 pt-6 mb-6">

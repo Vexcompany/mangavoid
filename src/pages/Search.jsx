@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { searchManga } from '../lib/api';
+import { addSearchHistory } from '../lib/storage';
 import MangaCard from '../components/MangaCard';
 import { CardSkeleton } from '../components/Skeleton';
 
@@ -18,6 +19,7 @@ export default function SearchPage() {
     setError(null);
     setResults([]);
 
+    addSearchHistory(q);
     searchManga(q, 12)
       .then(data => setResults(data))
       .catch(() => setError('Failed to fetch results. Please try again.'))

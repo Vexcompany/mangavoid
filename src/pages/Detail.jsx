@@ -5,6 +5,7 @@ import { getMangaDetail, formatNumber, statusLabel, typeLabel } from '../lib/api
 import { DetailSkeleton } from '../components/Skeleton';
 import MangaCard from '../components/MangaCard';
 import { isBookmarked, toggleBookmark, addHistory, getProgressFor, getReadChapters } from '../lib/storage';
+import { toast } from '../components/Toast';
 
 const STATUS_COLOR = {
   1: 'text-green-400 border-green-400/30 bg-green-400/5',
@@ -127,7 +128,9 @@ export default function DetailPage() {
 
   function handleBookmark() {
     if (!manga) return;
-    setBookmarked(toggleBookmark({ ...manga, hid }));
+    const added = toggleBookmark({ ...manga, hid });
+    setBookmarked(added);
+    toast(added ? `Bookmarked "${manga.title}"` : `Removed from bookmarks`, added ? 'bookmark' : 'info', 3000);
   }
 
   if (loading) return <DetailSkeleton />;
@@ -318,4 +321,3 @@ export default function DetailPage() {
     </main>
   );
 }
-
