@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
+import SearchBox from '../components/SearchBox';
 import MangaCard from '../components/MangaCard';
 import { CardSkeleton } from '../components/Skeleton';
 import { getHistory, getBookmarks } from '../lib/storage';
@@ -83,19 +84,11 @@ export default function Home() {
           <p className="text-ash-400 text-base max-w-md mx-auto mb-8 leading-relaxed">
             Explore millions of manga, manhwa, and manhua titles.
           </p>
-          <form onSubmit={handleSubmit} className="relative max-w-lg mx-auto">
-            <input
-              type="text"
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              placeholder="Search any title..."
-              className="w-full bg-ink-800/80 backdrop-blur border border-ink-600 focus:border-crimson-500 rounded-xl px-5 py-4 text-ash-100 placeholder-ash-500 text-base focus:outline-none focus:ring-2 focus:ring-crimson-500/20 transition-all"
-              autoFocus
-            />
-            <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 bg-crimson-600 hover:bg-crimson-500 text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors">
-              Search
-            </button>
-          </form>
+          <SearchBox
+            className="max-w-lg mx-auto"
+            inputClassName="w-full bg-ink-800/80 backdrop-blur border border-ink-600 focus:border-crimson-500 rounded-xl px-5 py-4 text-ash-100 placeholder-ash-500 text-base focus:outline-none focus:ring-2 focus:ring-crimson-500/20 transition-all pr-12"
+            autoFocus
+          />
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
             <span className="text-xs text-ash-500 font-mono">QUICK:</span>
             {QUICK_SEARCHES.map(t => (
