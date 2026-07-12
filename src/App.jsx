@@ -4,6 +4,7 @@ import Home from './pages/Home';
 import SearchPage from './pages/Search';
 import DetailPage from './pages/Detail';
 import ReaderPage from './pages/Reader';
+import { ToastContainer } from './components/Toast';
 
 export default function App() {
   return (
@@ -25,6 +26,7 @@ export default function App() {
           </div>
         } />
       </Routes>
+      <ToastContainer />
     </BrowserRouter>
   );
 }
