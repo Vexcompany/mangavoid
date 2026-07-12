@@ -14,9 +14,11 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  if (e.request.method !== 'GET') return;
+
   const url = new URL(e.request.url);
-  // Cache cover images aggressively
-  if (url.pathname.startsWith('/api/cover') || url.pathname.startsWith('/api/page')) {
+
+  if (url.pathname.startsWith('/api/cover') || url.pathname.startsWith('/api/page?')) {
     e.respondWith(
       caches.open(CACHE).then(async cache => {
         const cached = await cache.match(e.request);
@@ -28,18 +30,24 @@ self.addEventListener('fetch', e => {
     );
     return;
   }
-  // Network first for API
+
   if (url.pathname.startsWith('/api/')) {
-    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+    e.respondWith(
+      fetch(e.request).catch(() => caches.match(e.request))
+    );
     return;
   }
-  // Cache first for static assets
+
   e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request).then(res => {
-      if (res.ok && e.request.method === 'GET') {
-        caches.open(CACHE).then(c => c.put(e.request, res.clone()));
-      }
-      return res;
-    }))
+    caches.match(e.request).then(cached => {
+      if (cached) return cached;
+      return fetch(e.request).then(res => {
+        if (res.ok && res.type !== 'opaque') {
+          const toCache = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, toCache));
+        }
+        return res;
+      });
+    })
   );
 });
