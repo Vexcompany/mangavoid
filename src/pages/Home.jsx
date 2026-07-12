@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { searchManga } from '../lib/api';
+import axios from 'axios';
 import MangaCard from '../components/MangaCard';
 import { CardSkeleton } from '../components/Skeleton';
 
@@ -8,15 +8,15 @@ const TRENDING_QUERIES = ['One Piece', 'Jujutsu Kaisen', 'Chainsaw Man', 'Solo L
 
 export default function Home() {
   const [input, setInput] = useState('');
-  const [trending, setTrending] = useState([]);
-  const [loadingTrending, setLoadingTrending] = useState(true);
+  const [discover, setDiscover] = useState([]);
+  const [loadingDiscover, setLoadingDiscover] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    searchManga('action adventure', 12)
-      .then(data => setTrending(data))
-      .catch(() => setTrending([]))
-      .finally(() => setLoadingTrending(false));
+    axios.get('/api/discover')
+      .then(res => setDiscover(res.data.results || []))
+      .catch(() => setDiscover([]))
+      .finally(() => setLoadingDiscover(false));
   }, []);
 
   function handleSubmit(e) {
@@ -85,9 +85,9 @@ export default function Home() {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          {loadingTrending
-            ? Array.from({ length: 12 }).map((_, i) => <CardSkeleton key={i} />)
-            : trending.map(manga => <MangaCard key={manga.id || manga.hid} manga={manga} />)
+          {loadingDiscover
+            ? Array.from({ length: 24 }).map((_, i) => <CardSkeleton key={i} />)
+            : discover.map(manga => <MangaCard key={manga.id} manga={manga} />)
           }
         </div>
       </section>
