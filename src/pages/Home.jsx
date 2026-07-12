@@ -86,7 +86,7 @@ export default function Home() {
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
           {loadingDiscover
-            ? Array.from({ length: 24 }).map((_, i) => <CardSkeleton key={i} />)
+            ? Array.from({ length: 100 }).map((_, i) => <CardSkeleton key={i} />)
             : discover.map(manga => <MangaCard key={manga.id} manga={manga} />)
           }
         </div>
