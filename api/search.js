@@ -1,8 +1,6 @@
 const https = require('https');
-const querystring = require('querystring');
 
 const HEADERS = {
-  'authority': 'mangafire.to',
   'accept': 'application/json, text/javascript, */*; q=0.01',
   'accept-language': 'en-US,en;q=0.9',
   'referer': 'https://mangafire.to/',
@@ -19,12 +17,15 @@ function httpsGet(url, headers) {
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
-        try { resolve(JSON.parse(data)); }
-        catch (e) { reject(new Error('Invalid JSON')); }
+        try {
+          resolve({ status: res.statusCode, body: JSON.parse(data) });
+        } catch (e) {
+          resolve({ status: res.statusCode, body: data });
+        }
       });
     });
     req.on('error', reject);
-    req.setTimeout(10000, () => { req.destroy(); reject(new Error('Timeout')); });
+    req.setTimeout(15000, () => { req.destroy(); reject(new Error('Timeout')); });
   });
 }
 
@@ -37,16 +38,20 @@ module.exports = async (req, res) => {
   if (!q) return res.status(400).json({ error: 'Query required' });
 
   try {
-    const params = querystring.stringify({
-      keyword: q,
-      'content_rating[]': ['safe', 'suggestive'],
-      limit: parseInt(limit),
-    });
+    const params = new URLSearchParams();
+    params.append('keyword', q);
+    params.append('content_rating[]', 'safe');
+    params.append('content_rating[]', 'suggestive');
+    params.append('limit', String(parseInt(limit)));
 
-    const data = await httpsGet(`https://mangafire.to/api/titles?${params}`, HEADERS);
+    const url = `https://mangafire.to/api/titles?${params.toString()}`;
+    console.log('Fetching:', url);
 
-    if (data && data.items) {
-      const results = data.items.map(item => ({
+    const { status, body } = await httpsGet(url, HEADERS);
+    console.log('MangaFire status:', status);
+
+    if (typeof body === 'object' && body.items) {
+      const results = body.items.map(item => ({
         id: item.id,
         hid: item.hid,
         title: item.title,
@@ -61,6 +66,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({ results });
     }
 
+    console.log('Unexpected body:', JSON.stringify(body).slice(0, 300));
     return res.status(200).json({ results: [] });
   } catch (error) {
     console.error('Search error:', error.message);
