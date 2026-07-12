@@ -58,3 +58,24 @@ export function getPrefs() {
 export function savePrefs(prefs) {
   safeSet(PREFS_KEY, { ...getPrefs(), ...prefs });
 }
+
+// Search history
+const SEARCH_HISTORY_KEY = 'mv_search_history';
+export function getSearchHistory() { return safeGet(SEARCH_HISTORY_KEY, []); }
+export function addSearchHistory(query) {
+  if (!query?.trim()) return;
+  const list = getSearchHistory().filter(q => q !== query.trim());
+  list.unshift(query.trim());
+  safeSet(SEARCH_HISTORY_KEY, list.slice(0, 10));
+}
+export function clearSearchHistory() { safeSet(SEARCH_HISTORY_KEY, []); }
+
+// Continue reading — list of manga with progress
+export function getContinueReading() {
+  const progress = getProgress();
+  const history = getHistory();
+  return history
+    .filter(m => progress[m.hid])
+    .map(m => ({ ...m, progress: progress[m.hid] }))
+    .slice(0, 6);
+}
