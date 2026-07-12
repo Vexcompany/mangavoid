@@ -1,11 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { searchManga } from '../lib/api';
+import MangaCard from '../components/MangaCard';
+import { CardSkeleton } from '../components/Skeleton';
 
-const TRENDING = ['One Piece', 'Jujutsu Kaisen', 'Chainsaw Man', 'Solo Leveling', 'Berserk', 'Vinland Saga'];
+const TRENDING_QUERIES = ['One Piece', 'Jujutsu Kaisen', 'Chainsaw Man', 'Solo Leveling', 'Berserk', 'Vinland Saga'];
 
 export default function Home() {
   const [input, setInput] = useState('');
+  const [trending, setTrending] = useState([]);
+  const [loadingTrending, setLoadingTrending] = useState(true);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    searchManga('popular manga', 12)
+      .then(data => setTrending(data))
+      .catch(() => setTrending([]))
+      .finally(() => setLoadingTrending(false));
+  }, []);
 
   function handleSubmit(e) {
     e.preventDefault();
@@ -14,7 +26,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen">
-      <section className="relative flex flex-col items-center justify-center text-center px-4 py-24 md:py-36 overflow-hidden">
+      <section className="relative flex flex-col items-center justify-center text-center px-4 py-20 md:py-28 overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_0%,rgba(224,25,47,0.08),transparent)]" />
         <div className="absolute inset-0 grid-bg opacity-20" />
 
@@ -52,8 +64,8 @@ export default function Home() {
           </form>
 
           <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-            <span className="text-xs text-ash-500 font-mono">TRENDING:</span>
-            {TRENDING.map(t => (
+            <span className="text-xs text-ash-500 font-mono">QUICK SEARCH:</span>
+            {TRENDING_QUERIES.map(t => (
               <button
                 key={t}
                 onClick={() => navigate(`/search?q=${encodeURIComponent(t)}`)}
@@ -67,20 +79,16 @@ export default function Home() {
       </section>
 
       <section className="max-w-6xl mx-auto px-4 pb-16">
-        <div className="border-t border-ink-700 pt-12 grid grid-cols-3 md:grid-cols-6 gap-6 text-center">
-          {[
-            { label: 'Titles', value: '1M+' },
-            { label: 'Languages', value: '10+' },
-            { label: 'Genres', value: '50+' },
-            { label: 'Chapters', value: '50M+' },
-            { label: 'Authors', value: '200K+' },
-            { label: 'Updated', value: 'Daily' },
-          ].map(({ label, value }) => (
-            <div key={label}>
-              <div className="font-display text-2xl md:text-3xl text-crimson-400 tracking-wider">{value}</div>
-              <div className="text-xs text-ash-500 mt-1 font-mono uppercase tracking-widest">{label}</div>
-            </div>
-          ))}
+        <div className="border-t border-ink-700 pt-10 mb-6 flex items-baseline gap-3">
+          <h2 className="font-display text-2xl tracking-wider text-ash-100">DISCOVER</h2>
+          <span className="text-xs font-mono text-ash-500">popular titles</span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          {loadingTrending
+            ? Array.from({ length: 12 }).map((_, i) => <CardSkeleton key={i} />)
+            : trending.map(manga => <MangaCard key={manga.id || manga.hid} manga={manga} />)
+          }
         </div>
       </section>
     </main>
